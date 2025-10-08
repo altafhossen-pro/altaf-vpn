@@ -290,9 +290,9 @@ app.post('/create-client', async (req, res) => {
         console.log(`Config file: ${confPath}`);
         console.log(`QR file: ${qrPath}`);
 
-        // Use your existing server script - adjust the path as needed
-        // Assuming your script is in /usr/local/bin/ or similar server path
-        const cmd = `/home/altaf/wireguard-scripts/create-wg-client.sh "${name}" "${mobile}" "${qrPath}"`;
+        // Use your existing server script with sudo
+        const scriptPath = "/home/altaf/wireguard-scripts/create-wg-client.sh";
+        const cmd = `sudo bash ${scriptPath} "${name}" "${mobile}" "${qrPath}"`;
 
         exec(cmd, { timeout: 30000 }, async (error, stdout, stderr) => {
             if (error) {
