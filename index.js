@@ -10,8 +10,8 @@ const PORT = 7000;
 
 // MongoDB connection
 mongoose.connect('mongodb://127.0.0.1:27017/vpn_clients', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
 });
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -19,12 +19,12 @@ db.once('open', () => console.log('MongoDB connected'));
 
 // VPN Client Schema
 const vpnClientSchema = new mongoose.Schema({
-  name: { type: String, unique: true },
-  mobile: { type: String, unique: true },
-  vpnServer: { type: String, default: 'wg0' },
-  confFile: String,
-  qrFile: String,
-  createdAt: { type: Date, default: Date.now },
+    name: { type: String, unique: true },
+    mobile: { type: String, unique: true },
+    vpnServer: { type: String, default: 'wg0' },
+    confFile: String,
+    qrFile: String,
+    createdAt: { type: Date, default: Date.now },
 });
 const VPNClient = mongoose.model('VPNClient', vpnClientSchema);
 
@@ -39,7 +39,7 @@ app.use('/clients', express.static(CLIENT_DIR));
 
 // Serve the main form page
 app.get('/', (req, res) => {
-  res.send(`
+    res.send(`
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -246,7 +246,8 @@ app.get('/', (req, res) => {
                 e.preventDefault();
                 
                 const name = document.getElementById('name').value.trim();
-                const mobile = document.getElementById('mobile').value.trim();
+               const mobile = document.getElementById('mobile').value.trim().replace(/\D/g, '');
+
                 const submitBtn = document.getElementById('submitBtn');
                 const result = document.getElementById('result');
                 
@@ -334,140 +335,140 @@ app.get('/', (req, res) => {
 
 // Route to create VPN client
 app.post('/create-client', async (req, res) => {
-  const { name, mobile } = req.body;
+    const { name, mobile } = req.body;
 
-  if (!name || !mobile)
-    return res.status(400).json({ error: 'Name and mobile required' });
+    if (!name || !mobile)
+        return res.status(400).json({ error: 'Name and mobile required' });
 
-  // Validate mobile number format (11 digits)
-  if (!/^\d{11}$/.test(mobile)) {
-    return res.status(400).json({ error: 'Mobile number must be exactly 11 digits' });
-  }
-
-  try {
-    // Check if client already exists
-    const existingClient = await VPNClient.findOne({
-      $or: [{ name }, { mobile }]
-    });
-    
-    if (existingClient) {
-      return res.status(400).json({ 
-        error: existingClient.name === name ? 
-          'A client with this name already exists' : 
-          'A client with this mobile number already exists' 
-      });
+    // Validate mobile number format (11 digits)
+    if (!/^\d{11}$/.test(mobile)) {
+        return res.status(400).json({ error: 'Mobile number must be exactly 11 digits' });
     }
 
-    // Create safe filenames (replace spaces and special chars)
-    const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const safeMobile = mobile.replace(/[^a-zA-Z0-9._-]/g, '_');
-    
-    const confPath = path.join(CLIENT_DIR, `${safeName}.conf`);
-    const qrPath = path.join(CLIENT_DIR, `${safeMobile}.png`);
-
-    console.log(`Creating VPN client for ${name} (${mobile})`);
-    console.log(`Config file: ${confPath}`);
-    console.log(`QR file: ${qrPath}`);
-
-    // Use your existing server script - adjust the path as needed
-    // Assuming your script is in /usr/local/bin/ or similar server path
-    const cmd = `/home/altaf/wireguard-scripts/create-wg-client.sh "${name}" "${mobile}" "${qrPath}"`;
-    
-    exec(cmd, { timeout: 30000 }, async (error, stdout, stderr) => {
-      if (error) {
-        console.error('Script execution error:', error);
-        console.error('Script stderr:', stderr);
-        console.error('Script stdout:', stdout);
-        return res.status(500).json({ 
-          error: `Script execution failed: ${stderr || error.message}` 
+    try {
+        // Check if client already exists
+        const existingClient = await VPNClient.findOne({
+            $or: [{ name }, { mobile }]
         });
-      }
 
-      // Log script output for debugging
-      if (stdout) console.log('Script stdout:', stdout);
-      if (stderr) console.log('Script stderr:', stderr);
+        if (existingClient) {
+            return res.status(400).json({
+                error: existingClient.name === name ?
+                    'A client with this name already exists' :
+                    'A client with this mobile number already exists'
+            });
+        }
 
-      // Verify files were created
-      if (!fs.existsSync(confPath)) {
-        console.error(`Config file not created: ${confPath}`);
-        return res.status(500).json({ error: 'Config file was not created by script' });
-      }
+        // Create safe filenames (replace spaces and special chars)
+        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const safeMobile = mobile.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-      if (!fs.existsSync(qrPath)) {
-        console.warn(`QR file not created: ${qrPath}`);
-        // Continue without QR file - it's optional
-      }
+        const confPath = path.join(CLIENT_DIR, `${safeName}.conf`);
+        const qrPath = path.join(CLIENT_DIR, `${safeMobile}.png`);
 
-      try {
-        // Save client info in DB
-        const client = new VPNClient({
-          name,
-          mobile,
-          vpnServer: 'wg0',
-          confFile: confPath,
-          qrFile: fs.existsSync(qrPath) ? qrPath : null,
+        console.log(`Creating VPN client for ${name} (${mobile})`);
+        console.log(`Config file: ${confPath}`);
+        console.log(`QR file: ${qrPath}`);
+
+        // Use your existing server script - adjust the path as needed
+        // Assuming your script is in /usr/local/bin/ or similar server path
+        const cmd = `/home/altaf/wireguard-scripts/create-wg-client.sh "${name}" "${mobile}" "${qrPath}"`;
+
+        exec(cmd, { timeout: 30000 }, async (error, stdout, stderr) => {
+            if (error) {
+                console.error('Script execution error:', error);
+                console.error('Script stderr:', stderr);
+                console.error('Script stdout:', stdout);
+                return res.status(500).json({
+                    error: `Script execution failed: ${stderr || error.message}`
+                });
+            }
+
+            // Log script output for debugging
+            if (stdout) console.log('Script stdout:', stdout);
+            if (stderr) console.log('Script stderr:', stderr);
+
+            // Verify files were created
+            if (!fs.existsSync(confPath)) {
+                console.error(`Config file not created: ${confPath}`);
+                return res.status(500).json({ error: 'Config file was not created by script' });
+            }
+
+            if (!fs.existsSync(qrPath)) {
+                console.warn(`QR file not created: ${qrPath}`);
+                // Continue without QR file - it's optional
+            }
+
+            try {
+                // Save client info in DB
+                const client = new VPNClient({
+                    name,
+                    mobile,
+                    vpnServer: 'wg0',
+                    confFile: confPath,
+                    qrFile: fs.existsSync(qrPath) ? qrPath : null,
+                });
+                await client.save();
+
+                console.log(`Successfully created VPN client for ${name}`);
+
+                res.json({
+                    message: 'VPN client created successfully',
+                    name,
+                    mobile,
+                    confFile: confPath,
+                    qrFile: fs.existsSync(qrPath) ? `/clients/${safeMobile}.png` : null,
+                    downloadLinks: {
+                        config: `/clients/${safeName}.conf`,
+                        qr: fs.existsSync(qrPath) ? `/clients/${safeMobile}.png` : null
+                    }
+                });
+            } catch (dbError) {
+                console.error('Database error:', dbError);
+                res.status(500).json({ error: 'Failed to save client to database' });
+            }
         });
-        await client.save();
-
-        console.log(`Successfully created VPN client for ${name}`);
-
-        res.json({
-          message: 'VPN client created successfully',
-          name,
-          mobile,
-          confFile: confPath,
-          qrFile: fs.existsSync(qrPath) ? `/clients/${safeMobile}.png` : null,
-          downloadLinks: {
-            config: `/clients/${safeName}.conf`,
-            qr: fs.existsSync(qrPath) ? `/clients/${safeMobile}.png` : null
-          }
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        res.status(500).json({ error: 'Failed to save client to database' });
-      }
-    });
-  } catch (err) {
-    console.error('General error:', err);
-    res.status(500).json({ error: err.message });
-  }
+    } catch (err) {
+        console.error('General error:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Route to list all clients (for admin purposes)
 app.get('/clients', async (req, res) => {
-  try {
-    const clients = await VPNClient.find().sort({ createdAt: -1 });
-    res.json(clients);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+    try {
+        const clients = await VPNClient.find().sort({ createdAt: -1 });
+        res.json(clients);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Route to get client by mobile number
 app.get('/client/:mobile', async (req, res) => {
-  try {
-    const client = await VPNClient.findOne({ mobile: req.params.mobile });
-    if (!client) {
-      return res.status(404).json({ error: 'Client not found' });
+    try {
+        const client = await VPNClient.findOne({ mobile: req.params.mobile });
+        if (!client) {
+            return res.status(404).json({ error: 'Client not found' });
+        }
+        res.json(client);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    res.json(client);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    mongodb: db.readyState === 1 ? 'connected' : 'disconnected'
-  });
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        mongodb: db.readyState === 1 ? 'connected' : 'disconnected'
+    });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 VPN Server running on http://localhost:${PORT}`);
-  console.log(`📁 Client files will be stored in: ${CLIENT_DIR}`);
+    console.log(`🚀 VPN Server running on http://localhost:${PORT}`);
+    console.log(`📁 Client files will be stored in: ${CLIENT_DIR}`);
 });
