@@ -5,6 +5,21 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Simple template engine
+function renderTemplate(templateName, data = {}) {
+    const layoutPath = path.join(__dirname, 'views', 'layout.html');
+    const templatePath = path.join(__dirname, 'views', `${templateName}.html`);
+    
+    let layout = fs.readFileSync(layoutPath, 'utf8');
+    let template = fs.readFileSync(templatePath, 'utf8');
+    
+    // Replace placeholders
+    layout = layout.replace('{{title}}', data.title || 'VPN Server');
+    layout = layout.replace('{{content}}', template);
+    
+    return layout;
+}
+
 const app = express();
 const PORT = 7000;
 
@@ -39,6 +54,16 @@ app.use('/clients', express.static(CLIENT_DIR));
 
 // Serve the main form page
 app.get('/', (req, res) => {
+    res.send(renderTemplate('create-client', { title: 'Create Client' }));
+});
+
+// Serve the users list page
+app.get('/users', (req, res) => {
+    res.send(renderTemplate('users-list', { title: 'Users Management' }));
+});
+
+// Old route (keeping for reference)
+app.get('/old', (req, res) => {
     res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -46,200 +71,68 @@ app.get('/', (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>VPN Client Generator</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: '#667eea',
+                            secondary: '#764ba2'
+                        }
+                    }
+                }
             }
-            
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-            
-            .container {
-                background: white;
-                padding: 40px;
-                border-radius: 20px;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                width: 100%;
-                max-width: 500px;
-            }
-            
-            .header {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            
-            .header h1 {
-                color: #333;
-                font-size: 2.5em;
-                margin-bottom: 10px;
-            }
-            
-            .header p {
-                color: #666;
-                font-size: 1.1em;
-            }
-            
-            .form-group {
-                margin-bottom: 25px;
-            }
-            
-            label {
-                display: block;
-                margin-bottom: 8px;
-                color: #333;
-                font-weight: 600;
-                font-size: 1.1em;
-            }
-            
-            input[type="text"] {
-                width: 100%;
-                padding: 15px;
-                border: 2px solid #e1e5e9;
-                border-radius: 10px;
-                font-size: 1.1em;
-                transition: border-color 0.3s ease;
-            }
-            
-            input[type="text"]:focus {
-                outline: none;
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }
-            
-            .btn {
-                width: 100%;
-                padding: 15px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                font-size: 1.2em;
-                font-weight: 600;
-                cursor: pointer;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            
-            .btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-            }
-            
-            .btn:active {
-                transform: translateY(0);
-            }
-            
-            .btn:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-                transform: none;
-            }
-            
-            .result {
-                margin-top: 20px;
-                padding: 20px;
-                border-radius: 10px;
-                display: none;
-            }
-            
-            .success {
-                background: #d4edda;
-                border: 1px solid #c3e6cb;
-                color: #155724;
-            }
-            
-            .error {
-                background: #f8d7da;
-                border: 1px solid #f5c6cb;
-                color: #721c24;
-            }
-            
-            .loading {
-                text-align: center;
-                color: #666;
-            }
-            
-            .spinner {
-                border: 3px solid #f3f3f3;
-                border-top: 3px solid #667eea;
-                border-radius: 50%;
-                width: 30px;
-                height: 30px;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 10px;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            
-            .qr-code {
-                text-align: center;
-                margin-top: 20px;
-            }
-            
-            .qr-code img {
-                max-width: 200px;
-                border-radius: 10px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            }
-            
-            .download-links {
-                margin-top: 20px;
-                display: flex;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-            
-            .download-btn {
-                flex: 1;
-                padding: 10px;
-                background: #28a745;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                text-align: center;
-                font-weight: 600;
-                transition: background 0.3s ease;
-            }
-            
-            .download-btn:hover {
-                background: #218838;
-            }
-        </style>
+        </script>
     </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🔐 VPN Client Generator</h1>
-                <p>Create your WireGuard VPN client configuration</p>
+    <body class="bg-gradient-to-br from-primary to-secondary min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold text-gray-800">🔐 VPN Server</h1>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="/" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition">Create Client</a>
+                        <a href="/users" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">View Users</a>
+                    </div>
+                </div>
             </div>
-            
-            <form id="vpnForm">
-                <div class="form-group">
-                    <label for="name">Full Name:</label>
-                    <input type="text" id="name" name="name" required placeholder="Enter your full name">
+        </nav>
+
+        <!-- Main Content -->
+        <div class="flex items-center justify-center min-h-screen py-12 px-4">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Create VPN Client</h2>
+                    <p class="text-gray-600">Generate your WireGuard configuration</p>
                 </div>
                 
-                <div class="form-group">
-                    <label for="mobile">Mobile Number:</label>
-                    <input type="text" id="mobile" name="mobile" required placeholder="Enter 11-digit mobile number (e.g., 01712345678)" maxlength="11">
-                    <div id="mobileError" style="color: red; font-size: 0.9em; margin-top: 5px; display: none;"></div>
-                </div>
+                <form id="vpnForm" class="space-y-6">
+                    <div>
+                        <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                        <input type="text" id="name" name="name" required 
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition"
+                               placeholder="Enter your full name">
+                    </div>
+                    
+                    <div>
+                        <label for="mobile" class="block text-sm font-semibold text-gray-700 mb-2">Mobile Number</label>
+                        <input type="text" id="mobile" name="mobile" required maxlength="11"
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition"
+                               placeholder="Enter 11-digit mobile number">
+                        <div id="mobileError" class="text-red-500 text-sm mt-2 hidden"></div>
+                    </div>
+                    
+                    <button type="submit" id="submitBtn" 
+                            class="w-full bg-gradient-to-r from-primary to-secondary text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:-translate-y-1 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                        Generate VPN Client
+                    </button>
+                </form>
                 
-                <button type="submit" class="btn" id="submitBtn">Generate VPN Client</button>
-            </form>
-            
-            <div id="result" class="result"></div>
+                <div id="result" class="mt-6 hidden"></div>
+            </div>
         </div>
         
         <script>

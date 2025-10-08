@@ -1,0 +1,147 @@
+<div class="flex items-center justify-center min-h-screen py-12 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Create VPN Client</h2>
+            <p class="text-gray-600">Generate your WireGuard configuration</p>
+        </div>
+        
+        <form id="vpnForm" class="space-y-6">
+            <div>
+                <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <input type="text" id="name" name="name" required 
+                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition"
+                       placeholder="Enter your full name">
+            </div>
+            
+            <div>
+                <label for="mobile" class="block text-sm font-semibold text-gray-700 mb-2">Mobile Number</label>
+                <input type="text" id="mobile" name="mobile" required maxlength="11"
+                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition"
+                       placeholder="Enter 11-digit mobile number">
+                <div id="mobileError" class="text-red-500 text-sm mt-2 hidden"></div>
+            </div>
+            
+            <button type="submit" id="submitBtn" 
+                    class="w-full bg-gradient-to-r from-primary to-secondary text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:-translate-y-1 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                Generate VPN Client
+            </button>
+        </form>
+        
+        <div id="result" class="mt-6 hidden"></div>
+    </div>
+</div>
+
+<script>
+    // Real-time mobile validation
+    document.getElementById('mobile').addEventListener('input', function(e) {
+        const mobile = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        e.target.value = mobile; // Update input with only digits
+        
+        const errorDiv = document.getElementById('mobileError');
+        
+        if (mobile.length === 0) {
+            errorDiv.classList.add('hidden');
+        } else if (mobile.length < 11) {
+            errorDiv.textContent = `Need ${11 - mobile.length} more digits`;
+            errorDiv.classList.remove('hidden');
+        } else if (mobile.length > 11) {
+            errorDiv.textContent = 'Too many digits (max 11)';
+            errorDiv.classList.remove('hidden');
+        } else if (!mobile.startsWith('01')) {
+            errorDiv.textContent = 'Mobile number must start with 01';
+            errorDiv.classList.remove('hidden');
+        } else {
+            errorDiv.classList.add('hidden');
+        }
+    });
+    
+    document.getElementById('vpnForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value.trim();
+        const mobile = document.getElementById('mobile').value.trim().replace(/\D/g, '');
+
+        const submitBtn = document.getElementById('submitBtn');
+        const result = document.getElementById('result');
+        
+        if (!name || !mobile) {
+            showResult('Please fill in all fields', 'error');
+            return;
+        }
+        
+        // Simple validation: 11 digits starting with 01
+        if (mobile.length !== 11 || !mobile.startsWith('01')) {
+            showResult('Mobile number must be 11 digits starting with 01', 'error');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Generating...';
+        result.className = 'mt-6 p-4 rounded-lg text-center';
+        result.innerHTML = `
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            Creating your VPN client configuration...
+        `;
+        result.classList.remove('hidden');
+        
+        try {
+            const response = await fetch('/create-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, mobile })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showSuccess(data);
+            } else {
+                showResult(data.error || 'An error occurred', 'error');
+            }
+        } catch (error) {
+            showResult('Network error: ' + error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Generate VPN Client';
+        }
+    });
+    
+    function showResult(message, type) {
+        const result = document.getElementById('result');
+        const bgColor = type === 'error' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-green-100 border-green-300 text-green-700';
+        result.className = `mt-6 p-4 rounded-lg border ${bgColor}`;
+        result.innerHTML = message;
+        result.classList.remove('hidden');
+    }
+    
+    function showSuccess(data) {
+        const result = document.getElementById('result');
+        result.className = 'mt-6 p-6 rounded-lg bg-green-100 border border-green-300 text-green-700';
+        
+        const qrSection = data.qrFile ? `
+            <div class="text-center mt-4">
+                <h4 class="font-semibold mb-2">QR Code:</h4>
+                <img src="${data.qrFile}" alt="VPN QR Code" class="mx-auto rounded-lg shadow-md max-w-48" onerror="this.style.display='none'">
+            </div>
+        ` : '<p class="text-center mt-4"><em>QR code was not generated by the script</em></p>';
+        
+        const downloadLinks = `
+            <div class="flex gap-3 mt-4">
+                <a href="${data.downloadLinks.config}" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-center font-semibold hover:bg-green-700 transition" download>Download Config</a>
+                ${data.downloadLinks.qr ? `<a href="${data.downloadLinks.qr}" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-center font-semibold hover:bg-blue-700 transition" download>Download QR</a>` : ''}
+            </div>
+        `;
+        
+        result.innerHTML = `
+            <h3 class="text-lg font-bold mb-2">✅ VPN Client Created Successfully!</h3>
+            <p><strong>Name:</strong> ${data.name}</p>
+            <p><strong>Mobile:</strong> ${data.mobile}</p>
+            ${qrSection}
+            ${downloadLinks}
+        `;
+        result.classList.remove('hidden');
+    }
+</script>
