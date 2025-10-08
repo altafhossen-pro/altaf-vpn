@@ -263,16 +263,19 @@ app.post('/create-client', async (req, res) => {
     }
 
     try {
-        // Check if client already exists
-        const existingClient = await VPNClient.findOne({
-            $or: [{ name }, { mobile }]
-        });
-
-        if (existingClient) {
+        // Check if client with same name already exists
+        const existingName = await VPNClient.findOne({ name });
+        if (existingName) {
             return res.status(400).json({
-                error: existingClient.name === name ?
-                    'A client with this name already exists' :
-                    'A client with this mobile number already exists'
+                error: 'A client with this name already exists'
+            });
+        }
+        
+        // Check if client with same mobile already exists
+        const existingMobile = await VPNClient.findOne({ mobile });
+        if (existingMobile) {
+            return res.status(400).json({
+                error: 'A client with this mobile number already exists'
             });
         }
 
@@ -371,6 +374,70 @@ app.get('/client/:mobile', async (req, res) => {
         res.json(client);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete client endpoint
+app.delete('/delete-client/:id', async (req, res) => {
+    try {
+        const clientId = req.params.id;
+        
+        // Find the client first
+        const client = await VPNClient.findById(clientId);
+        if (!client) {
+            return res.status(404).json({ error: 'Client not found' });
+        }
+        
+        console.log(`Deleting VPN client: ${client.name} (${client.mobile})`);
+        
+        // Remove client from WireGuard server using your script
+        const scriptPath = "/home/altaf/wireguard-scripts/remove-wg-client.sh";
+        const cmd = `sudo bash ${scriptPath} "${client.name}"`;
+        
+        exec(cmd, async (error, stdout, stderr) => {
+            if (error) {
+                console.error('Script execution error:', error);
+                console.error('Script stderr:', stderr);
+                console.error('Script stdout:', stdout);
+                return res.status(500).json({ 
+                    error: `Failed to remove client from server: ${stderr || error.message}` 
+                });
+            }
+            
+            // Log script output for debugging
+            if (stdout) console.log('Remove script stdout:', stdout);
+            if (stderr) console.log('Remove script stderr:', stderr);
+            
+            try {
+                // Delete client files if they exist
+                if (client.confFile && fs.existsSync(client.confFile)) {
+                    fs.unlinkSync(client.confFile);
+                    console.log(`Deleted config file: ${client.confFile}`);
+                }
+                
+                if (client.qrFile && fs.existsSync(client.qrFile)) {
+                    fs.unlinkSync(client.qrFile);
+                    console.log(`Deleted QR file: ${client.qrFile}`);
+                }
+                
+                // Remove from database
+                await VPNClient.findByIdAndDelete(clientId);
+                
+                console.log(`Successfully deleted VPN client: ${client.name}`);
+                
+                res.json({
+                    message: 'VPN client deleted successfully',
+                    name: client.name,
+                    mobile: client.mobile
+                });
+            } catch (dbError) {
+                console.error('Database error:', dbError);
+                res.status(500).json({ error: 'Failed to delete client from database' });
+            }
+        });
+    } catch (err) {
+        console.error('General error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
