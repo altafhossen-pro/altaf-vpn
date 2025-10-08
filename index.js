@@ -24,7 +24,7 @@ const app = express();
 const PORT = 7000;
 
 // MongoDB connection
-mongoose.connect('mongodb://altaf@altaf25823Aa!100@127.0.0.1:27017/vpn_clients', {
+mongoose.connect('mongodb://altaf:altaf25823Aa!100@127.0.0.1:27017/vpn_clients', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
