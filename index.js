@@ -371,7 +371,7 @@ app.post('/create-client', async (req, res) => {
 
     // Use your existing server script - adjust the path as needed
     // Assuming your script is in /usr/local/bin/ or similar server path
-    const cmd = `/usr/local/bin/create-wg-client.sh "${name}" "${mobile}" "${qrPath}"`;
+    const cmd = `/home/altaf/wireguard-scripts/create-wg-client.sh "${name}" "${mobile}" "${qrPath}"`;
     
     exec(cmd, { timeout: 30000 }, async (error, stdout, stderr) => {
       if (error) {
