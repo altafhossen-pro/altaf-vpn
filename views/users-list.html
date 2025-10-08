@@ -93,7 +93,81 @@
     </div>
 </div>
 
+<!-- QR Code Modal -->
+<div id="qrModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">QR Code</h3>
+                <button onclick="closeQRModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Content -->
+            <div class="text-center">
+                <p class="text-sm text-gray-600 mb-4" id="modalSubtitle">VPN Configuration QR Code</p>
+                <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                    <img id="modalQRImage" src="" alt="QR Code" class="mx-auto max-w-64 h-auto rounded-lg shadow-md">
+                </div>
+                
+                <!-- Modal Actions -->
+                <div class="flex space-x-3">
+                    <button onclick="downloadQR()" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition">
+                        Download QR
+                    </button>
+                    <button onclick="closeQRModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold hover:bg-gray-400 transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    let currentQRUrl = '';
+    
+    function showQRModal(name, mobile, qrUrl) {
+        currentQRUrl = qrUrl;
+        document.getElementById('modalTitle').textContent = `QR Code - ${name}`;
+        document.getElementById('modalSubtitle').textContent = `Mobile: ${mobile}`;
+        document.getElementById('modalQRImage').src = qrUrl;
+        document.getElementById('qrModal').classList.remove('hidden');
+    }
+    
+    function closeQRModal() {
+        document.getElementById('qrModal').classList.add('hidden');
+        currentQRUrl = '';
+    }
+    
+    function downloadQR() {
+        if (currentQRUrl) {
+            const link = document.createElement('a');
+            link.href = currentQRUrl;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('qrModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeQRModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeQRModal();
+        }
+    });
     // Load users data
     async function loadUsers() {
         try {
@@ -162,7 +236,10 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
                             ${user.confFile ? `<a href="/clients/${user.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.conf" class="text-blue-600 hover:text-blue-900" download>Config</a>` : ''}
-                            ${user.qrFile ? `<a href="/clients/${user.mobile}.png" class="text-green-600 hover:text-green-900" download>QR</a>` : ''}
+                            ${user.qrFile ? `
+                                <button onclick="showQRModal('${user.name}', '${user.mobile}', '/clients/${user.mobile}.png')" class="text-green-600 hover:text-green-900">View QR</button>
+                                <a href="/clients/${user.mobile}.png" class="text-green-600 hover:text-green-900" download>Download</a>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>
