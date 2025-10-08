@@ -232,7 +232,8 @@ app.get('/', (req, res) => {
                 
                 <div class="form-group">
                     <label for="mobile">Mobile Number:</label>
-                    <input type="text" id="mobile" name="mobile" required pattern="\d{11}" placeholder="Enter 11-digit mobile number (e.g., 01712345678)" maxlength="11">
+                    <input type="text" id="mobile" name="mobile" required placeholder="Enter 11-digit mobile number (e.g., 01712345678)" maxlength="11">
+                    <div id="mobileError" style="color: red; font-size: 0.9em; margin-top: 5px; display: none;"></div>
                 </div>
                 
                 <button type="submit" class="btn" id="submitBtn">Generate VPN Client</button>
@@ -242,11 +243,34 @@ app.get('/', (req, res) => {
         </div>
         
         <script>
+            // Real-time mobile validation
+            document.getElementById('mobile').addEventListener('input', function(e) {
+                const mobile = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                e.target.value = mobile; // Update input with only digits
+                
+                const errorDiv = document.getElementById('mobileError');
+                
+                if (mobile.length === 0) {
+                    errorDiv.style.display = 'none';
+                } else if (mobile.length < 11) {
+                    errorDiv.textContent = \`Need \${11 - mobile.length} more digits\`;
+                    errorDiv.style.display = 'block';
+                } else if (mobile.length > 11) {
+                    errorDiv.textContent = 'Too many digits (max 11)';
+                    errorDiv.style.display = 'block';
+                } else if (!mobile.startsWith('01')) {
+                    errorDiv.textContent = 'Mobile number must start with 01';
+                    errorDiv.style.display = 'block';
+                } else {
+                    errorDiv.style.display = 'none';
+                }
+            });
+            
             document.getElementById('vpnForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
                 const name = document.getElementById('name').value.trim();
-               const mobile = document.getElementById('mobile').value.trim().replace(/\D/g, '');
+                const mobile = document.getElementById('mobile').value.trim().replace(/\D/g, '');
 
                 const submitBtn = document.getElementById('submitBtn');
                 const result = document.getElementById('result');
@@ -256,9 +280,9 @@ app.get('/', (req, res) => {
                     return;
                 }
                 
-                // Validate mobile number format
-                if (!/^\d{11}$/.test(mobile)) {
-                    showResult('Mobile number must be exactly 11 digits', 'error');
+                // Simple validation: 11 digits starting with 01
+                if (mobile.length !== 11 || !mobile.startsWith('01')) {
+                    showResult('Mobile number must be 11 digits starting with 01', 'error');
                     return;
                 }
                 
@@ -340,9 +364,9 @@ app.post('/create-client', async (req, res) => {
     if (!name || !mobile)
         return res.status(400).json({ error: 'Name and mobile required' });
 
-    // Validate mobile number format (11 digits)
-    if (!/^\d{11}$/.test(mobile)) {
-        return res.status(400).json({ error: 'Mobile number must be exactly 11 digits' });
+    // Simple validation: 11 digits starting with 01
+    if (mobile.length !== 11 || !mobile.startsWith('01')) {
+        return res.status(400).json({ error: 'Mobile number must be 11 digits starting with 01' });
     }
 
     try {
