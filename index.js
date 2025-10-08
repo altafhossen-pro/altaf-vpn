@@ -392,7 +392,7 @@ app.delete('/delete-client/:id', async (req, res) => {
         
         // Remove client from WireGuard server using your script
         const scriptPath = "/home/altaf/wireguard-scripts/remove-wg-client.sh";
-        const cmd = `sudo bash ${scriptPath} "${client.name}"`;
+        const cmd = `bash ${scriptPath} "${client.name}"`;
         
         exec(cmd, async (error, stdout, stderr) => {
             if (error) {
